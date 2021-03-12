@@ -16,3 +16,6 @@ I wanted to share my ESPhome code for controlling my 2-car garage. Originally, I
 - Assorted wiring (alarm wire works well along with Dolphin-style crimp connectors)
 
 I also used a small project enclosure, 5V microUSB (to power the D1 and Relay Board) and some 3D printed mounts which were glued into the enclosure
+
+### Entity Card can look like this:
+![alt text](https://github.com/rullywowpcb/esphome-garage-relay/blob/main/ha_entity_card1.jpg)
