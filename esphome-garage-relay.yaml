@@ -1,0 +1,248 @@
+# ESPHome Garage Door Code for two garage doors
+# Code by Rullywow www.rullywow.com
+
+#MIT License
+
+# Copyright (c) [year] [fullname]
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+
+# ************ Equipment Used ****************
+  # Wemos D1 mini (ESP8266) 
+  # Two-relay board with octocouplers - SainSmart or similar
+  # Two NO (normally open) reed switches. I used heavy-duty weatherproof ones
+
+
+# ************ Pins Used on Wemos D1:  ************ 
+  # D1: Right Garage Door Relay
+  # D2: Left Garage Door Relay
+  # D6: Garage Right Reed Switch
+  # D7: Garage Right Reed Switch
+
+# Reed switches are connected to the pins above and other conductor to GND
+
+# Garage doors are named LEFT/RIGHT as if looking from the driveway
+# towards the house
+ 
+
+# Setup esphome and choose platform and board
+esphome:
+  name: esphome_garage_door_2relay
+  platform: ESP8266
+  board: d1_mini
+
+# Enable WiFi. Actual passwords are in a secrets file but you can also enter
+# your credentials below
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_pass
+
+# Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Garage Door ESPhome"
+    password: "your_random_generated_password"
+
+captive_portal:
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+
+# Enable OTA - this is one of the best parts of ESPHome. Make changes and upload
+# over WiFi!
+ota:
+
+
+# ************** REED SWITCH SENSORS ************** 
+# Set pins for NO reed switch and enable HIGH pullups on D1 sensor pins
+# When door is CLOSED, pins will remain high (due to pullups on D1 Mini)
+# When door is OPEN, pins will be pulled low by GND going through switch to pin
+# GND is wired to the other connecting sensor wire of sensors
+binary_sensor:
+  - platform: gpio
+    pin: 
+      number: D6
+      mode: INPUT_PULLUP
+    name: "Garage Right Reed Switch"
+    id: right_contact_sensor
+    internal: true
+    
+# Depending on your reed switches you may need to invert the pin by uncommenting     
+    #filters:
+     # - invert: 
+      
+  - platform: gpio
+    pin: 
+      number: D7
+      mode: INPUT_PULLUP
+    name: "Garage Left Reed Switch"
+    id: left_contact_sensor
+    internal: true
+
+# Depending on your reed switches you may need to invert the pin by uncommenting   
+    #filters:
+     # - invert:
+      
+
+# ********** UPTIME and WiFi RSSI *********    
+# This section is mostly for fun, providing uptime and WiFi RSSI
+
+# "Human readable" means that the uptime will be displayed in dd:hh:mm:ss
+# instead of just seconds
+text_sensor:
+  - platform: template
+    name: Uptime Human Readable Garage Door
+    id: uptime_human_garagedoor
+    icon: mdi:clock-start
+sensor:
+  - platform: uptime
+    name: Uptime Sensor
+    id: uptime_sensor
+    update_interval: 60s
+    on_raw_value:
+      then:
+        - text_sensor.template.publish:
+            id: uptime_human_garagedoor
+            state: !lambda |-
+              int seconds = round(id(uptime_sensor).raw_state);
+              int days = seconds / (24 * 3600);
+              seconds = seconds % (24 * 3600);
+              int hours = seconds / 3600;
+              seconds = seconds % 3600;
+              int minutes = seconds /  60;
+              seconds = seconds % 60;
+              return (
+                (days ? String(days) + "d " : "") +
+                (hours ? String(hours) + "h " : "") +
+                (minutes ? String(minutes) + "m " : "") +
+                (String(seconds) + "s")
+              ).c_str();
+
+# Why not add a sensor to see WiFi strength?
+  
+  - platform: wifi_signal
+    name: "Garage D1 Mini Wifi Strength"
+    update_interval: 60s
+
+
+# This is the actual "Switch" but we will be using a HA 'cover' for the doors
+# Relays are actually pulled LOW to activate in this case
+# Most of the relay boards are like this on the market
+# Comment out "inverted" if your relay wants to be pulled HIGH to activate
+switch:
+  - platform: gpio
+    pin: D1
+    inverted: yes
+    name: "Garage Door Right Relay"
+    id: garage_right_switch
+    
+  - platform: gpio
+    pin: D2
+    inverted: yes
+    name: "Garage Door Left Relay"
+    id: garage_left_switch
+    
+    
+# Here is the actual cover section for each door
+# Lets set up the Right Door first
+cover:
+  - platform: template
+    device_class: garage
+    name: "Garage Door Right"
+    # Here we will add the sensor state for the right_contact_sensor
+    # to the cover
+    lambda: |-
+      if (id(right_contact_sensor).state) {
+        return COVER_OPEN;
+      } else {
+        return COVER_CLOSED;
+      }
+    
+    # Most garage door buttons have one button which controls three options:
+    # open/close/stop
+    # Here, we will define these actions by telling what to do with the relays
+  
+    
+    # open_action is the "up arrow" in HA
+    open_action:
+      # Cancel any previous action
+      - switch.turn_off: garage_right_switch
+      # Turn on the relay 
+      - switch.turn_on: garage_right_switch
+      # Wait a bit before continuing. 
+      # You may have to increase this value if it isn't long enough
+      - delay: 0.2s
+      # Turn off the relay
+      - switch.turn_off: garage_right_switch
+    
+    # close_action is the "down arrow" in HA
+    close_action:
+      - switch.turn_off: garage_right_switch
+      - switch.turn_on: garage_right_switch
+      - delay: 0.2s
+      - switch.turn_off: garage_right_switch
+    
+    # stop_action is the square stop icon 
+    stop_action:
+      - switch.turn_on: garage_right_switch
+      - delay: 0.2s
+      - switch.turn_off: garage_right_switch
+    optimistic: true
+    assumed_state: true
+    
+    
+    
+  # Let's set up the LEFT door just like we did the right  
+  - platform: template
+    device_class: garage
+    name: "Garage Door Left"
+    
+    lambda: |-
+      if (id(left_contact_sensor).state) {
+        return COVER_OPEN;
+      } else {
+        return COVER_CLOSED;
+      }   
+    
+    
+    open_action:
+      # Cancel any previous action
+      - switch.turn_off: garage_left_switch
+      # Turn the OPEN switch on briefly
+      - switch.turn_on: garage_left_switch
+      - delay: 0.2s
+      - switch.turn_off: garage_left_switch
+    close_action:
+      - switch.turn_off: garage_left_switch
+      - switch.turn_on: garage_left_switch
+      - delay: 0.2s
+      - switch.turn_off: garage_left_switch
+    stop_action:
+      - switch.turn_on: garage_right_switch
+      - delay: 0.2s
+      - switch.turn_off: garage_right_switch
+
+    optimistic: true
+    assumed_state: true
+    
+    
+    
