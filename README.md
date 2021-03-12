@@ -10,9 +10,9 @@ I wanted to share my ESPhome code for controlling my 2-car garage. Originally, I
 
 This project uses the following hardware:
 
-Wemos D1 Mini (or Pro) or just about any ESP8266 PCB
-2ch Optocoupled Relay (SainSmart or similar)
-Reed switches to know when the door is open or closed. I recommend heavy-duty weatherproof metal ones used for gates
-Assorted wiring (alarm wire works well along with Dolphin-style crimp connectors)
+- Wemos D1 Mini (or Pro) or just about any ESP8266 PCB
+- 2ch Optocoupled Relay (SainSmart or similar)
+- Reed switches to know when the door is open or closed. I recommend heavy-duty weatherproof metal ones used for gates
+- Assorted wiring (alarm wire works well along with Dolphin-style crimp connectors)
 
 I also used a small project enclosure, 5V microUSB (to power the D1 and Relay Board) and some 3D printed mounts which were glued into the enclosure
