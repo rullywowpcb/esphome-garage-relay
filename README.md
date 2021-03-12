@@ -2,6 +2,7 @@
 
 
 ## ESPhome code for Garage Door Relay using ESP8266
+### Add your garage doors to Home Assistant using ESPHome and Wemos D1 Mini
 
 If my code has helped you, consider buying me a beverage:
 https://www.buymeacoffee.com/rullywow
